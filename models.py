@@ -34,13 +34,16 @@ class QuestionForm(messages.Message):
 	image = messages.StringField(5, repeated=True)
 	# websafeKey      = messages.StringField(6)
 
+class QuestionForms(messages.Message):
+	items = messages.MessageField(QuestionForm, 1, repeated=True)
+
 class QuestionMiniForm(messages.Message):
 	title = messages.StringField(1, required=True)
 	handle = messages.StringField(2, required=True)
 
-
-class QuestionForms(messages.Message):
-	items = messages.MessageField(QuestionForm, 1, repeated=True)
+class QuestionMiniForms(object):
+	items = messages.MessageField(QuestionMiniForm, 1, repeated=True)
+		
 
 class TestcaseForms(messages.Message):
 	items = messages.MessageField(TestcaseForm, 1, repeated=True)

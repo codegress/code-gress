@@ -19,11 +19,13 @@ from protorpc import remote
 
 from google.appengine.ext import ndb
 
-from models import Testcase
 from models import Question
 from models import TestcaseForm
 from models import QuestionForm
 from models import QuestionForms
+from models import QuestionMiniForm
+from models import QuestionMiniForms
+from models import Testcase
 from models import TestcaseForms
 
 
@@ -74,8 +76,23 @@ class CodegressApi(remote.Service):
 		return self._addQuestionObject(request)
 
 
+	def _getQuestions(self, request):
+		ques = Question.query()
+		return copyQuestiontoForm(ques)
 
-	@endpoints.method(QUES_GET_REQUEST, )
+	def copyQuestiontoForm(ques):
+		forms=[]
+		for q in ques:
+			forms += QuestionMiniForm(title=q.title, handle=q.user.email.stringValue)
+		return QuestionMiniForms(items=forms)
+
+
+	@endpoints.method(QUES_GET_REQUEST, QuestionMiniForms,
+		path='getAllQuestions',
+		http_method='POST',
+		name='getAllQuestions')
+	def getAllQuestions(self, request):
+		return self._getQuestions(request)
 
 
 api = endpoints.api_server([CodegressApi]) # register API
