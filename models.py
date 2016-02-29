@@ -41,7 +41,7 @@ class QuestionMiniForm(messages.Message):
 	title = messages.StringField(1, required=True)
 	handle = messages.StringField(2, required=True)
 
-class QuestionMiniForms(object):
+class QuestionMiniForms(messages.Message):
 	items = messages.MessageField(QuestionMiniForm, 1, repeated=True)
 		
 
