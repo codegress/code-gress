@@ -27,6 +27,9 @@ from models import QuestionForm
 from models import QuestionForms
 from models import QuestionMiniForm
 from models import QuestionMiniForms
+from models import Submission
+from models import SubmissionForm
+from models import SubmissionForms
 from models import Testcase
 from models import TestcaseForms
 
@@ -38,6 +41,10 @@ WEB_CLIENT_ID='602783917304-5epdo5rivihkj4c6oe62a8vf863kuk3r.apps.googleusercont
 
 QUES_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,)
+
+SUB_POST_REQUEST = endpoints.ResourceContainer(
+	SubmissionForm,
+	websafekey = messages.StringField(1, required=True))
 
 
 @endpoints.api(name='codegress', version='v2', 
@@ -54,21 +61,28 @@ class CodegressApi(remote.Service):
 		testcases = data['sample_testcase'] + data['testcases']
 		del data['sample_testcase']
 		del data['testcases']
+		q_key = ndb.Key(Question, data['title'])
+		data['key'] = q_key
+		data['author'] = user
+		data['queskey'] = q_key.urlsafe()
 		tc = []
 		for test in testcases:
 			tc.append(Testcase(iput=test.iput,
 												 oput=test.oput,
 												 points=test.points,
 												 hint=test.hint))
-		q_key = ndb.Key(Question, data['title'])
-		data['key'] = q_key
-		data['author'] = user
 		Question(**data).put()
-		t_ids = Testcase.allocate_ids(size=len(tc), parent=q_key)
-		for i in range(0, len(t_ids)):
-			t_key = ndb.Key(Testcase, t_ids[i], parent = q_key)
-			tc[i].put()
+		self._addTestcases(q_key, tc)
 		return request
+
+	
+	def _addTestcases(self, parent_key, testcases):
+		t_ids = Testcase.allocate_ids(size=len(testcases), parent=parent_key)
+		for i in range(0, len(t_ids)):
+			t_key = ndb.Key(Testcase, t_ids[i], parent = parent_key)
+			testcases[i].key = t_key
+			testcases[i].put()
+		return
 
 	@endpoints.method(QuestionForm, QuestionForm, 
 		path='addQuestion',
@@ -87,6 +101,29 @@ class CodegressApi(remote.Service):
 
 	def _copyToQuestionMiniForm(self, q):
 		return QuestionMiniForm(title=q.title, handle=q.author.email())
+			
+	def _addSubmission(self, request):
+		user = endpoints.get_current_user()
+		if not user:
+			raise endpoints.UnauthorizedException("Please login to continue")
+		data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+		q_key = ndb.Key(urlsafe=request.websafekey)
+		del data['websafekey']
+		s_id = Submission.allocate_ids(size = 1, parent=q_key)[0]
+		s_key = ndb.Key(Submission, s_id, parent=q_key)
+		data['key'] = s_key
+		data['user'] = user
+		data['subskey'] = s_key.urlsafe()
+		Submission(**data).put()
+		return SubmissionForm(code=data['code'], score=data['score'], 
+						language=data['language'])
+
+	def _copyToSubmissionForms(self, query):
+		return SubmissionForms(items = [self._copyToSubmissionForm(q) for q in query])
+			
+	def _copyToSubmissionForm(self, sub):
+		return SubmissionForm(code=sub.code, score=sub.score,
+													language=sub.language)
 
 	@endpoints.method(QUES_GET_REQUEST, QuestionMiniForms,
 		path='getAllQuestions',
@@ -95,5 +132,19 @@ class CodegressApi(remote.Service):
 	def getAllQuestions(self, request):
 		return self._getQuestions()
 
+	@endpoints.method(SUB_POST_REQUEST, SubmissionForm,
+		path='codeSubmit',
+		http_method='POST',
+		name='codeSubmit')
+	def codeSubmit(self, request):
+		return self._addSubmission(request)
+
+	@endpoints.method(message_types.VoidMessage, SubmissionForms,
+		path='getSubmissions',
+		http_method='GET',
+		name='getSubmissions')
+	def getSubmissions(self):
+		submissions = Submission.query()
+		return self._copyToSubmissionForms(submissions)
 
 api = endpoints.api_server([CodegressApi]) # register API

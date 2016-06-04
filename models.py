@@ -4,19 +4,13 @@ import endpoints
 from protorpc import messages
 from google.appengine.ext import ndb
 
-class Testcase(ndb.Model):
-	iput = ndb.StringProperty(required = True)
-	oput = ndb.StringProperty(required = True)
-	points = ndb.IntegerProperty(required = True)
-	hint = ndb.StringProperty(default = None)
-
-
 class Question(ndb.Model):
 	title = ndb.StringProperty(required = True)
 	description = ndb.TextProperty(required = True)
 	image = ndb.StringProperty(repeated = True)
 	score = ndb.IntegerProperty()
 	author = ndb.UserProperty(required = True)
+	queskey = ndb.StringProperty(required = True)
 
 
 class TestcaseForm(messages.Message):
@@ -43,7 +37,27 @@ class QuestionMiniForm(messages.Message):
 
 class QuestionMiniForms(messages.Message):
 	items = messages.MessageField(QuestionMiniForm, 1, repeated=True)
-		
+
+class Submission(ndb.Model):
+	user = ndb.UserProperty(required=True)
+	language = ndb.StringProperty(required=True, choices=['python', 'java'])
+	code = ndb.StringProperty(required=True)
+	score = ndb.IntegerProperty(required=True)
+	subskey = ndb.StringProperty(required=True)
+
+class SubmissionForm(messages.Message):
+	code = messages.StringField(1, required=True)
+	score= messages.IntegerField(2, required=True)
+	language = messages.StringField(3, required=True)
+
+class SubmissionForms(messages.Message):
+	items = messages.MessageField(SubmissionForm, 1, repeated=True)
+
+class Testcase(ndb.Model):
+	iput = ndb.StringProperty(required = True)
+	oput = ndb.StringProperty(required = True)
+	points = ndb.IntegerProperty(required = True)
+	hint = ndb.StringProperty(default = None)
 
 class TestcaseForms(messages.Message):
 	items = messages.MessageField(TestcaseForm, 1, repeated=True)
